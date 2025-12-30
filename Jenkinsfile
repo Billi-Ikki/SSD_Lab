@@ -15,9 +15,9 @@ pipeline {
         
         stage('Install Dependencies') {
             steps {
-                sh '''
-                    python3 -m venv venv
-                    . venv/bin/activate
+                bat '''
+                    python -m venv venv
+                    call venv\\Scripts\\activate.bat
                     pip install -r requirements.txt
                 '''
             }
@@ -25,8 +25,8 @@ pipeline {
         
         stage('Run Tests') {
             steps {
-                sh '''
-                    . venv/bin/activate
+                bat '''
+                    call venv\\Scripts\\activate.bat
                     pytest -v
                 '''
             }
@@ -34,17 +34,21 @@ pipeline {
         
         stage('Build App') {
             steps {
-                sh "docker build -t ${DOCKER_IMAGE} ."
+                script {
+                    bat "docker build -t ${APP_NAME}:${BUILD_NUMBER} ."
+                }
             }
         }
         
         stage('Deploy App') {
             steps {
-                sh '''
-                    docker stop ${APP_NAME} || true
-                    docker rm ${APP_NAME} || true
-                    docker run -d -p 5000:5000 --name ${APP_NAME} ${DOCKER_IMAGE}
-                '''
+                script {
+                    bat """
+                        docker stop ${APP_NAME} 2>nul || echo Container not running
+                        docker rm ${APP_NAME} 2>nul || echo Container not found
+                        docker run -d -p 5000:5000 --name ${APP_NAME} ${APP_NAME}:${BUILD_NUMBER}
+                    """
+                }
             }
         }
     }
